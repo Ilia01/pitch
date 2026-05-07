@@ -1,6 +1,9 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
 import { runInit } from './cli/init.js';
+import { leadsCommand } from './cli/leads.js';
+import { templateCommand } from './cli/template.js';
+import { TemplateError } from './core/templates.js';
 import { ConfigError } from './lib/config.js';
 import { log } from './lib/log.js';
 
@@ -18,6 +21,9 @@ program
     runInit();
   });
 
+program.addCommand(leadsCommand);
+program.addCommand(templateCommand);
+
 async function main(): Promise<void> {
   try {
     await program.parseAsync(process.argv);
@@ -25,6 +31,10 @@ async function main(): Promise<void> {
     if (err instanceof ConfigError) {
       log.error(err.message);
       process.exit(2);
+    }
+    if (err instanceof TemplateError) {
+      log.error(err.message);
+      process.exit(3);
     }
     log.error({ err }, 'unhandled error');
     process.exit(1);
