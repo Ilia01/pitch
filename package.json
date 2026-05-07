@@ -1,0 +1,41 @@
+{
+  "name": "pitch",
+  "version": "0.1.0-alpha.0",
+  "description": "CLI for sending small-batch, personalized cold emails.",
+  "license": "Apache-2.0",
+  "author": "Ilia Goginashvili",
+  "type": "module",
+  "bin": {
+    "pitch": "./dist/index.js"
+  },
+  "main": "./dist/index.js",
+  "files": ["dist", "migrations", "LICENSE", "README.md"],
+  "engines": {
+    "node": ">=24"
+  },
+  "packageManager": "pnpm@10.26.2",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "tsx src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write .",
+    "prepack": "pnpm build"
+  },
+  "dependencies": {
+    "commander": "^12.1.0",
+    "pino": "^9.5.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@types/node": "^24.0.0",
+    "pino-pretty": "^13.0.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^3.0.0"
+  }
+}
