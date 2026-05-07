@@ -57,7 +57,12 @@ async function main(): Promise<void> {
       );
       process.exit(5);
     }
-    log.error({ err }, 'unhandled error');
+    // Sanitize: log only message + class, never the full error object —
+    // SDK errors can carry response headers / cause chains we don't want
+    // serialized via pino's default behavior.
+    const message = err instanceof Error ? err.message : String(err);
+    const errName = err instanceof Error ? err.name : 'unknown';
+    log.error({ err: { name: errName, message } }, 'unhandled error');
     process.exit(1);
   }
 }

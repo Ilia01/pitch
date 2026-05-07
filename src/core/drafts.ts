@@ -20,19 +20,19 @@ export interface UpsertDraftInput {
   body: string;
   body_md: string;
   provider: string;
+  /** When true, overwrite even if the existing draft was edited. */
+  force?: boolean;
 }
 
+export type UpsertOutcome = 'inserted' | 'updated' | 'skipped-edited';
+
 /**
- * Create a draft if none exists for (lead, campaign). If one exists and is
- * NOT edited, overwrite. If it IS edited, leave it alone (caller should
- * skip and report).
- *
- * Returns 'inserted' | 'updated' | 'skipped-edited'.
+ * Create a draft if none exists for (lead, campaign). If one exists:
+ *   - and NOT edited → overwrite, return 'updated'
+ *   - and edited, force=false → leave alone, return 'skipped-edited'
+ *   - and edited, force=true → overwrite (resets edited to 0), return 'updated'
  */
-export function upsertDraft(
-  db: DB,
-  input: UpsertDraftInput,
-): 'inserted' | 'updated' | 'skipped-edited' {
+export function upsertDraft(db: DB, input: UpsertDraftInput): UpsertOutcome {
   const existing = db
     .prepare('SELECT id, edited FROM drafts WHERE lead_id = ? AND campaign_id = ?')
     .get(input.lead_id, input.campaign_id) as { id: number; edited: number } | undefined;
@@ -56,11 +56,12 @@ export function upsertDraft(
     return 'inserted';
   }
 
-  if (existing.edited === 1) return 'skipped-edited';
+  if (existing.edited === 1 && !input.force) return 'skipped-edited';
 
   db.prepare(
-    `UPDATE drafts SET subject = ?, body = ?, body_md = ?, provider = ?, updated_at = ?
-     WHERE id = ?`,
+    `UPDATE drafts
+       SET subject = ?, body = ?, body_md = ?, provider = ?, edited = 0, updated_at = ?
+       WHERE id = ?`,
   ).run(input.subject, input.body, input.body_md, input.provider, now, existing.id);
   return 'updated';
 }

@@ -59,6 +59,16 @@ describe('assertSendReady', () => {
     expect(() => assertSendReady(env)).not.toThrow();
   });
 
+  it('compares from-email and domain case-insensitively', () => {
+    const env = loadEnv({
+      RESEND_API_KEY: 'rk_live',
+      RESEND_PROD: 'true',
+      RESEND_DOMAIN: 'IliaReach.com',
+      RESEND_FROM_EMAIL: 'Ilia@iliareach.com',
+    });
+    expect(() => assertSendReady(env)).not.toThrow();
+  });
+
   it('fails when API key is missing', () => {
     const env = loadEnv({ RESEND_TEST_EMAIL: 'me@example.com' });
     expect(() => assertSendReady(env)).toThrowError(/RESEND_API_KEY is required/);

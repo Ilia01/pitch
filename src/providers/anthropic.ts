@@ -69,10 +69,12 @@ function mapAnthropicError(err: unknown, provider: string): ProviderError {
   if (err instanceof APIError) {
     const status = err.status ?? 0;
     if (status === 401 || status === 403) {
+      // Auth is a configuration error, not something the next provider
+      // can recover. Fail the chain immediately so the user fixes .env.
       return new ProviderError(`auth failed: ${err.message}`, {
         provider,
         status,
-        retryable: false,
+        fatal: true,
       });
     }
     if (status === 400) {

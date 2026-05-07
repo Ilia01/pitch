@@ -1,6 +1,6 @@
 -- Pitch v0.1 initial schema.
 -- Lead lifecycle: imported -> enriched -> drafted -> sent -> {opened|replied|bounced} -> done
--- All writes go through src/core/state.ts (added in Phase 3).
+-- Status transitions live in the per-domain core modules (leads, drafts, generator).
 
 CREATE TABLE IF NOT EXISTS leads (
   id              INTEGER PRIMARY KEY AUTOINCREMENT,

@@ -53,7 +53,9 @@ export function assertSendReady(env: Env): void {
     if (!env.RESEND_DOMAIN) {
       throw new ConfigError('RESEND_PROD=true requires RESEND_DOMAIN to be set.');
     }
-    if (!env.RESEND_FROM_EMAIL.endsWith(`@${env.RESEND_DOMAIN}`)) {
+    const fromDomain = env.RESEND_FROM_EMAIL.toLowerCase();
+    const verifiedDomain = env.RESEND_DOMAIN.toLowerCase();
+    if (!fromDomain.endsWith(`@${verifiedDomain}`)) {
       throw new ConfigError(
         `RESEND_FROM_EMAIL (${env.RESEND_FROM_EMAIL}) must use the verified domain (${env.RESEND_DOMAIN}).`,
       );

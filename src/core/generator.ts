@@ -59,19 +59,32 @@ export async function runGeneration(db: DB, opts: GenerateOptions): Promise<Gene
       const renderedBody = renderBody(template, lead, opener.text);
       const renderedSubject = renderTemplate(template.subject, leadVars(lead, opener.text));
 
-      const outcome = upsertDraft(db, {
-        lead_id: lead.id,
-        campaign_id: opts.campaign.id,
-        subject: renderedSubject,
-        body: renderedBody,
-        body_md: renderedBody,
-        provider: opener.provider,
-      });
+      // Upsert + status promotion + event log in one txn so a crash mid-step
+      // can't leave the DB in a state where the draft exists but the lead
+      // wasn't promoted (or vice versa).
+      let outcome: ReturnType<typeof upsertDraft>;
+      db.exec('BEGIN');
+      try {
+        outcome = upsertDraft(db, {
+          lead_id: lead.id,
+          campaign_id: opts.campaign.id,
+          subject: renderedSubject,
+          body: renderedBody,
+          body_md: renderedBody,
+          provider: opener.provider,
+          force: opts.force,
+        });
+        if (outcome !== 'skipped-edited') {
+          promoteLead(db, lead.id, 'drafted');
+        }
+        logEvent(db, lead.id, opts.campaign.id, 'generated', opener.provider);
+        db.exec('COMMIT');
+      } catch (err) {
+        db.exec('ROLLBACK');
+        throw err;
+      }
 
-      promoteLead(db, lead.id, outcome === 'skipped-edited' ? 'drafted' : 'drafted');
-      logEvent(db, lead.id, opts.campaign.id, 'generated', opener.provider);
-
-      if (outcome === 'skipped-edited' && !opts.force) {
+      if (outcome === 'skipped-edited') {
         stats.skippedEdited += 1;
       } else {
         stats.generated += 1;

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { extractFromHtml, fetchAndExtract } from '../src/core/readability.js';
 
 const sampleHtml = `
@@ -92,5 +92,34 @@ describe('fetchAndExtract', () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.text.length).toBeLessThanOrEqual(51); // 50 + ellipsis
+  });
+
+  it('rejects file:// URLs without making a fetch call', async () => {
+    const fetchImpl = vi.fn();
+    const result = await fetchAndExtract('file:///etc/passwd', {
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.reason).toMatch(/unsupported scheme/);
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it('rejects ftp:// URLs', async () => {
+    const result = await fetchAndExtract('ftp://example.com/x', {
+      fetchImpl: mockFetch({ body: '' }),
+    });
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.reason).toMatch(/unsupported scheme/);
+  });
+
+  it('rejects malformed URLs', async () => {
+    const result = await fetchAndExtract('not a url', {
+      fetchImpl: mockFetch({ body: '' }),
+    });
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.reason).toMatch(/invalid URL/);
   });
 });

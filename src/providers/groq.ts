@@ -75,7 +75,7 @@ function mapGroqError(err: unknown, provider: string): ProviderError {
       return new ProviderError(`auth failed: ${err.message}`, {
         provider,
         status,
-        retryable: false,
+        fatal: true,
       });
     }
     if (status === 400) {

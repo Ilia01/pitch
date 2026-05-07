@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -35,7 +35,7 @@ describe('runGeneration', () => {
   function setup() {
     const db = openDb({ path: join(dir, 'pitch.db'), migrationsDir: MIGRATIONS_DIR });
     const bodyPath = join(dir, 'body.md');
-    require('node:fs').writeFileSync(bodyPath, 'Hi {{first_name}},\n\n{{hook}}\n\n— Ilia');
+    writeFileSync(bodyPath, 'Hi {{first_name}},\n\n{{hook}}\n\n— Ilia');
     addTemplate(db, { name: 'intro', subject: 'Hi {{first_name}}', bodyPath });
     const campaign = createCampaign(db, { name: 'jobs', templateName: 'intro' });
     insertLeads(db, [
@@ -89,6 +89,28 @@ describe('runGeneration', () => {
     const after = listDraftsForCampaign(db, campaign.id);
     const edited = after.find((d) => d.id === targetId);
     expect(edited?.body).toContain('first version');
+    db.close();
+  });
+
+  it('overwrites edited drafts when --force is set', async () => {
+    const { db, campaign } = setup();
+    await runGeneration(db, { campaign, providers: [fakeProvider('first version')] });
+    const drafts = listDraftsForCampaign(db, campaign.id);
+    const targetId = drafts[0]?.id ?? 0;
+    db.prepare('UPDATE drafts SET edited = 1 WHERE id = ?').run(targetId);
+
+    const stats = await runGeneration(db, {
+      campaign,
+      providers: [fakeProvider('forced version')],
+      force: true,
+    });
+    expect(stats.skippedEdited).toBe(0);
+    expect(stats.generated).toBe(2);
+
+    const after = listDraftsForCampaign(db, campaign.id);
+    const overwritten = after.find((d) => d.id === targetId);
+    expect(overwritten?.body).toContain('forced version');
+    expect(overwritten?.edited).toBe(0);
     db.close();
   });
 
@@ -153,7 +175,7 @@ describe('verify campaign + drafts upsert directly', () => {
   it('upsertDraft inserts then updates the same lead+campaign pair', () => {
     const db = openDb({ path: join(dir, 'pitch.db'), migrationsDir: MIGRATIONS_DIR });
     const bodyPath = join(dir, 'body.md');
-    require('node:fs').writeFileSync(bodyPath, 'body');
+    writeFileSync(bodyPath, 'body');
     addTemplate(db, { name: 'intro', subject: 'Hi', bodyPath });
     const campaign = createCampaign(db, { name: 'jobs', templateName: 'intro' });
     insertLeads(db, [{ name: 'Alice', email: 'alice@acme.com' }]);

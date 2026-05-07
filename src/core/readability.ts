@@ -39,6 +39,18 @@ export async function fetchAndExtract(
   const maxChars = opts.maxChars ?? 4000;
   const userAgent = opts.userAgent ?? DEFAULT_UA;
 
+  // Reject non-http(s) schemes up front. Without this guard, a hook_url like
+  // file:///etc/passwd or a custom scheme would be passed to fetch.
+  let parsedUrl: URL;
+  try {
+    parsedUrl = new URL(url);
+  } catch {
+    return { ok: false, url, reason: 'invalid URL' };
+  }
+  if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
+    return { ok: false, url, reason: `unsupported scheme: ${parsedUrl.protocol}` };
+  }
+
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
 
